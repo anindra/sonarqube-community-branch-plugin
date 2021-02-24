@@ -127,7 +127,7 @@ public class GraphqlCheckRunProvider implements CheckRunProvider {
 
         Map<String, Object> inputObjectArguments = new HashMap<>();
         inputObjectArguments.put("repositoryId", repositoryAuthenticationToken.getRepositoryId());
-        inputObjectArguments.put("name", "Sonarqube Results");
+        inputObjectArguments.put("name", String.format("%s Sonarqube Results", analysisDetails.getAnalysisProjectName()));
         inputObjectArguments.put("status", RequestableCheckStatusState.COMPLETED);
         inputObjectArguments.put("conclusion", QualityGate.Status.OK == analysisDetails.getQualityGateStatus() ?
                                    CheckConclusionState.SUCCESS : CheckConclusionState.FAILURE);
@@ -234,7 +234,7 @@ public class GraphqlCheckRunProvider implements CheckRunProvider {
                 .filter(i -> OPEN_ISSUE_STATUSES.contains(i.getIssue().status())).map(componentIssue -> {
             InputObject<Object> issueLocation = graphqlProvider.createInputObject()
                     .put("startLine", Optional.ofNullable(componentIssue.getIssue().getLine()).orElse(0))
-                    .put("endLine", Optional.ofNullable(componentIssue.getIssue().getLine()).orElse(0) + 1)
+                    .put("endLine", Optional.ofNullable(componentIssue.getIssue().getLine()).orElse(0))
                     .build();
             return graphqlProvider.createInputObject()
                     .put("path", componentIssue.getComponent().getReportAttributes().getScmPath().get())

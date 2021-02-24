@@ -1,13 +1,6 @@
 package com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.action;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.Arrays;
-
+import com.google.protobuf.Message;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -22,7 +15,14 @@ import org.sonar.db.alm.setting.AlmSettingDto;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.AlmSettings;
 
-import com.google.protobuf.Message;
+import java.util.Arrays;
+import java.util.Collections;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class ListDefinitionsActionTest {
 
@@ -54,6 +54,8 @@ public class ListDefinitionsActionTest {
         when(githubAlmSettingDto.getKey()).thenReturn("githubKey");
         when(githubAlmSettingDto.getUrl()).thenReturn("githubUrl");
         when(githubAlmSettingDto.getAppId()).thenReturn("githubAppId");
+        when(githubAlmSettingDto.getClientId()).thenReturn("githubClientId");
+        when(githubAlmSettingDto.getClientSecret()).thenReturn("githubClientSecret");
         when(githubAlmSettingDto.getPrivateKey()).thenReturn("githubPrivateKey");
 
         AlmSettingDto gitlabAlmSettingDto = mock(AlmSettingDto.class);
@@ -98,6 +100,8 @@ public class ListDefinitionsActionTest {
                 .setUrl("githubUrl")
                 .setAppId("githubAppId")
                 .setPrivateKey("githubPrivateKey")
+                .setClientId("githubClientId")
+                .setClientSecret("githubClientSecret")
                 .build())
             .addAzure(AlmSettings.AlmSettingAzure.newBuilder()
                 .setKey("azureDevopsKey")
@@ -110,6 +114,49 @@ public class ListDefinitionsActionTest {
                 .build())
             .addGitlab(AlmSettings.AlmSettingGitlab.newBuilder()
                 .setKey("gitlabKey")
+                .setPersonalAccessToken("gitlabPersonalAccessToken")
+                .build())
+            .build();
+
+        assertThat(message).isInstanceOf(AlmSettings.ListDefinitionsWsResponse.class).isEqualTo(expectedResponse);
+    }
+
+    @Test
+    public void testHandleWithGitlabUrl() {
+        DbClient dbClient = mock(DbClient.class);
+        DbSession dbSession = mock(DbSession.class);
+        when(dbClient.openSession(eq(false))).thenReturn(dbSession);
+        AlmSettingDao almSettingDao = mock(AlmSettingDao.class);
+
+        AlmSettingDto gitlabAlmSettingDto = mock(AlmSettingDto.class);
+        when(gitlabAlmSettingDto.getAlm()).thenReturn(ALM.GITLAB);
+        when(gitlabAlmSettingDto.getKey()).thenReturn("gitlabKey");
+        when(gitlabAlmSettingDto.getUrl()).thenReturn("url");
+        when(gitlabAlmSettingDto.getPersonalAccessToken()).thenReturn("gitlabPersonalAccessToken");
+        when(gitlabAlmSettingDto.getUrl()).thenReturn("url");
+
+        when(almSettingDao.selectAll(eq(dbSession))).thenReturn(Collections.singletonList(gitlabAlmSettingDto));
+        when(dbClient.almSettingDao()).thenReturn(almSettingDao);
+
+        UserSession userSession = mock(UserSession.class);
+
+        ProtoBufWriter protoBufWriter = mock(ProtoBufWriter.class);
+
+        ListDefinitionsAction testCase = new ListDefinitionsAction(dbClient, userSession, protoBufWriter);
+
+        Request request = mock(Request.class, Mockito.RETURNS_DEEP_STUBS);
+        Response response = mock(Response.class, Mockito.RETURNS_DEEP_STUBS);
+
+        testCase.handle(request, response);
+
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(protoBufWriter).write(messageArgumentCaptor.capture(), eq(request), eq(response));
+        Message message = messageArgumentCaptor.getValue();
+
+        AlmSettings.ListDefinitionsWsResponse expectedResponse = AlmSettings.ListDefinitionsWsResponse.newBuilder()
+           .addGitlab(AlmSettings.AlmSettingGitlab.newBuilder()
+                .setKey("gitlabKey")
+                .setUrl("url")
                 .setPersonalAccessToken("gitlabPersonalAccessToken")
                 .build())
             .build();
